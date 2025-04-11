@@ -1,15 +1,3 @@
-interface _Crypto {
-    readonly subtle: _SubtleCrypto;
-    getRandomValues: (array: Uint8Array) => Uint8Array;
-}
-interface _SubtleCrypto {
-    decrypt: (algorithm: AesCbcParams | AesCtrParams | AesGcmParams | AlgorithmIdentifier | RsaOaepParams, key: CryptoKey, data: Uint8Array) => Promise<ArrayBuffer>;
-    deriveBits: (algorithm: AlgorithmIdentifier | EcdhKeyDeriveParams | HkdfParams | Pbkdf2Params, baseKey: CryptoKey, length: number) => Promise<ArrayBuffer>;
-    encrypt: (algorithm: AesCbcParams | AesCtrParams | AesGcmParams | AlgorithmIdentifier | RsaOaepParams, key: CryptoKey, data: Uint8Array) => Promise<ArrayBuffer>;
-    importKey: (format: Exclude<KeyFormat, 'jwk'>, keyData: ArrayBuffer | Uint8Array, algorithm: AesKeyAlgorithm | AlgorithmIdentifier | EcKeyImportParams | HmacImportParams | RsaHashedImportParams, extractable: boolean, keyUsages: KeyUsage[]) => Promise<CryptoKey>;
-    sign: (algorithm: AlgorithmIdentifier | EcdsaParams | RsaPssParams, key: CryptoKey, data: Uint8Array) => Promise<ArrayBuffer>;
-}
-
 /**
  * Algorithm used for encryption and decryption.
  */
@@ -190,66 +178,59 @@ declare const macFormatVersion = "2";
 declare const macPrefix = "Fe26.2";
 /**
  * Generate cryptographically strong pseudorandom bits.
- * @param _crypto Custom WebCrypto implementation
  * @param bits Number of bits to generate
  * @returns Buffer
  */
-declare const randomBits: (_crypto: _Crypto, bits: number) => Uint8Array;
+declare const randomBits: (bits: number) => Uint8Array;
 /**
  * Generates a key from the password.
- * @param _crypto Custom WebCrypto implementation
  * @param password A password string or buffer key
  * @param options Object used to customize the key derivation algorithm
  * @returns An object with keys: key, salt, iv
  */
-declare const generateKey: (_crypto: _Crypto, password: Password, options: GenerateKeyOptions) => Promise<Key>;
+declare const generateKey: (password: Password, options: GenerateKeyOptions) => Promise<Key>;
 /**
  * Encrypts data.
- * @param _crypto Custom WebCrypto implementation
  * @param password A password string or buffer key
  * @param options Object used to customize the key derivation algorithm
  * @param data String to encrypt
  * @returns An object with keys: encrypted, key
  */
-declare const encrypt: (_crypto: _Crypto, password: Password, options: GenerateKeyOptions<EncryptionAlgorithm>, data: string) => Promise<{
+declare const encrypt: (password: Password, options: GenerateKeyOptions<EncryptionAlgorithm>, data: string) => Promise<{
     encrypted: Uint8Array;
     key: Key;
 }>;
 /**
  * Decrypts data.
- * @param _crypto Custom WebCrypto implementation
  * @param password A password string or buffer key
  * @param options Object used to customize the key derivation algorithm
  * @param data Buffer to decrypt
  * @returns Decrypted string
  */
-declare const decrypt: (_crypto: _Crypto, password: Password, options: GenerateKeyOptions<EncryptionAlgorithm>, data: Uint8Array | string) => Promise<string>;
+declare const decrypt: (password: Password, options: GenerateKeyOptions<EncryptionAlgorithm>, data: Uint8Array | string) => Promise<string>;
 /**
  * Calculates a HMAC digest.
- * @param _crypto Custom WebCrypto implementation
  * @param password A password string or buffer
  * @param options Object used to customize the key derivation algorithm
  * @param data String to calculate the HMAC over
  * @returns An object with keys: digest, salt
  */
-declare const hmacWithPassword: (_crypto: _Crypto, password: Password, options: GenerateKeyOptions<IntegrityAlgorithm>, data: string) => Promise<HMacResult>;
+declare const hmacWithPassword: (password: Password, options: GenerateKeyOptions<IntegrityAlgorithm>, data: string) => Promise<HMacResult>;
 /**
  * Serializes, encrypts, and signs objects into an iron protocol string.
- * @param _crypto Custom WebCrypto implementation
  * @param object Data being sealed
  * @param password A string, buffer or object
  * @param options Object used to customize the key derivation algorithm
  * @returns Iron sealed string
  */
-declare const seal: (_crypto: _Crypto, object: unknown, password: RawPassword, options: SealOptions) => Promise<string>;
+declare const seal: (object: unknown, password: RawPassword, options: SealOptions) => Promise<string>;
 /**
  * Verifies, decrypts, and reconstruct an iron protocol string into an object.
- * @param _crypto Custom WebCrypto implementation
  * @param sealed The iron protocol string generated with seal()
  * @param password A string, buffer, or object
  * @param options Object used to customize the key derivation algorithm
  * @returns The verified decrypted object (can be null)
  */
-declare const unseal: (_crypto: _Crypto, sealed: string, password: Password | password.Hash, options: SealOptions) => Promise<unknown>;
+declare const unseal: (sealed: string, password: Password | password.Hash, options: SealOptions) => Promise<unknown>;
 
 export { type EncryptionAlgorithm, type GenerateKeyOptions, type HMacResult, type IntegrityAlgorithm, type Key, type Password, type RawPassword, type SealOptions, type SealOptionsSub, type _Algorithm, algorithms, base64urlDecode, base64urlEncode, bufferToString, clone, decrypt, defaults, encrypt, generateKey, hmacWithPassword, macFormatVersion, macPrefix, password, randomBits, seal, stringToBuffer, unseal };

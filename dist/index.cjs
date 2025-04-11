@@ -108,19 +108,19 @@ var algorithms = {
 };
 var macFormatVersion = "2";
 var macPrefix = "Fe26.2";
-var randomBytes = (_crypto, size) => {
+var randomBytes = (size) => {
   const bytes = new Uint8Array(size);
-  _crypto.getRandomValues(bytes);
+  crypto.getRandomValues(bytes);
   return bytes;
 };
-var randomBits = (_crypto, bits) => {
+var randomBits = (bits) => {
   if (bits < 1) throw new Error("Invalid random bits count");
   const bytes = Math.ceil(bits / 8);
-  return randomBytes(_crypto, bytes);
+  return randomBytes(bytes);
 };
-var pbkdf2 = async (_crypto, password, salt, iterations, keyLength, hash) => {
+var pbkdf2 = async (password, salt, iterations, keyLength, hash) => {
   const passwordBuffer = stringToBuffer(password);
-  const importedKey = await _crypto.subtle.importKey(
+  const importedKey = await crypto.subtle.importKey(
     "raw",
     passwordBuffer,
     { name: "PBKDF2" },
@@ -129,10 +129,10 @@ var pbkdf2 = async (_crypto, password, salt, iterations, keyLength, hash) => {
   );
   const saltBuffer = stringToBuffer(salt);
   const params = { name: "PBKDF2", hash, salt: saltBuffer, iterations };
-  const derivation = await _crypto.subtle.deriveBits(params, importedKey, keyLength * 8);
+  const derivation = await crypto.subtle.deriveBits(params, importedKey, keyLength * 8);
   return derivation;
 };
-var generateKey = async (_crypto, password, options) => {
+var generateKey = async (password, options) => {
   var _a;
   if (!(password == null ? void 0 : password.length)) throw new Error("Empty password");
   if (options == null || typeof options !== "object") throw new Error("Bad options");
@@ -151,33 +151,26 @@ var generateKey = async (_crypto, password, options) => {
     if (!salt) {
       const { saltBits = 0 } = options;
       if (!saltBits) throw new Error("Missing salt and saltBits options");
-      const randomSalt = randomBits(_crypto, saltBits);
+      const randomSalt = randomBits(saltBits);
       salt = [...new Uint8Array(randomSalt)].map((x) => x.toString(16).padStart(2, "0")).join("");
     }
     const derivedKey = await pbkdf2(
-      _crypto,
       password,
       salt,
       options.iterations,
       algorithm.keyBits / 8,
       "SHA-1"
     );
-    const importedEncryptionKey = await _crypto.subtle.importKey(
-      "raw",
-      derivedKey,
-      id,
-      false,
-      usage
-    );
+    const importedEncryptionKey = await crypto.subtle.importKey("raw", derivedKey, id, false, usage);
     result.key = importedEncryptionKey;
     result.salt = salt;
   } else {
     if (password.length < algorithm.keyBits / 8) throw new Error("Key buffer (password) too small");
-    result.key = await _crypto.subtle.importKey("raw", password, id, false, usage);
+    result.key = await crypto.subtle.importKey("raw", password, id, false, usage);
     result.salt = "";
   }
   if (options.iv) result.iv = options.iv;
-  else if ("ivBits" in algorithm) result.iv = randomBits(_crypto, algorithm.ivBits);
+  else if ("ivBits" in algorithm) result.iv = randomBits(algorithm.ivBits);
   return result;
 };
 var getEncryptParams = (algorithm, key, data) => {
@@ -187,20 +180,20 @@ var getEncryptParams = (algorithm, key, data) => {
     typeof data === "string" ? stringToBuffer(data) : data
   ];
 };
-var encrypt = async (_crypto, password, options, data) => {
-  const key = await generateKey(_crypto, password, options);
-  const encrypted = await _crypto.subtle.encrypt(...getEncryptParams(options.algorithm, key, data));
+var encrypt = async (password, options, data) => {
+  const key = await generateKey(password, options);
+  const encrypted = await crypto.subtle.encrypt(...getEncryptParams(options.algorithm, key, data));
   return { encrypted: new Uint8Array(encrypted), key };
 };
-var decrypt = async (_crypto, password, options, data) => {
-  const key = await generateKey(_crypto, password, options);
-  const decrypted = await _crypto.subtle.decrypt(...getEncryptParams(options.algorithm, key, data));
+var decrypt = async (password, options, data) => {
+  const key = await generateKey(password, options);
+  const decrypted = await crypto.subtle.decrypt(...getEncryptParams(options.algorithm, key, data));
   return bufferToString(new Uint8Array(decrypted));
 };
-var hmacWithPassword = async (_crypto, password, options, data) => {
-  const key = await generateKey(_crypto, password, { ...options, hmac: true });
+var hmacWithPassword = async (password, options, data) => {
+  const key = await generateKey(password, { ...options, hmac: true });
   const textBuffer = stringToBuffer(data);
-  const signed = await _crypto.subtle.sign({ name: "HMAC" }, key.key, textBuffer);
+  const signed = await crypto.subtle.sign({ name: "HMAC" }, key.key, textBuffer);
   const digest = base64urlEncode(new Uint8Array(signed));
   return { digest, salt: key.salt };
 };
@@ -211,7 +204,7 @@ var normalizePassword = (password) => {
     return { id: password.id, encryption: password.secret, integrity: password.secret };
   return { id: password.id, encryption: password.encryption, integrity: password.integrity };
 };
-var seal = async (_crypto, object, password, options) => {
+var seal = async (object, password, options) => {
   if (!password) throw new Error("Empty password");
   const opts = clone(options);
   const now = Date.now() + (opts.localtimeOffsetMsec || 0);
@@ -219,12 +212,12 @@ var seal = async (_crypto, object, password, options) => {
   const pass = normalizePassword(password);
   const { id = "", encryption, integrity } = pass;
   if (id && !/^\w+$/.test(id)) throw new Error("Invalid password id");
-  const { encrypted, key } = await encrypt(_crypto, encryption, opts.encryption, objectString);
+  const { encrypted, key } = await encrypt(encryption, opts.encryption, objectString);
   const encryptedB64 = base64urlEncode(new Uint8Array(encrypted));
   const iv = base64urlEncode(key.iv);
   const expiration = opts.ttl ? now + opts.ttl : "";
   const macBaseString = `${macPrefix}*${id}*${key.salt}*${iv}*${encryptedB64}*${expiration}`;
-  const mac = await hmacWithPassword(_crypto, integrity, opts.integrity, macBaseString);
+  const mac = await hmacWithPassword(integrity, opts.integrity, macBaseString);
   const sealed = `${macBaseString}*${mac.salt}*${mac.digest}`;
   return sealed;
 };
@@ -234,7 +227,7 @@ var fixedTimeComparison = (a, b) => {
   for (let i = 0; i < a.length; i += 1) mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return mismatch === 0;
 };
-var unseal = async (_crypto, sealed, password, options) => {
+var unseal = async (sealed, password, options) => {
   if (!password) throw new Error("Empty password");
   const opts = clone(options);
   const now = Date.now() + (opts.localtimeOffsetMsec || 0);
@@ -266,13 +259,13 @@ var unseal = async (_crypto, sealed, password, options) => {
   pass = normalizePassword(pass);
   const macOptions = opts.integrity;
   macOptions.salt = hmacSalt;
-  const mac = await hmacWithPassword(_crypto, pass.integrity, macOptions, macBaseString);
+  const mac = await hmacWithPassword(pass.integrity, macOptions, macBaseString);
   if (!fixedTimeComparison(mac.digest, hmac)) throw new Error("Bad hmac value");
   const encrypted = base64urlDecode(encryptedB64);
   const decryptOptions = opts.encryption;
   decryptOptions.salt = encryptionSalt;
   decryptOptions.iv = base64urlDecode(encryptionIv);
-  const decrypted = await decrypt(_crypto, pass.encryption, decryptOptions, encrypted);
+  const decrypted = await decrypt(pass.encryption, decryptOptions, encrypted);
   if (decrypted) return JSON.parse(decrypted);
   return null;
 };

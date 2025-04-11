@@ -32,4 +32,4 @@ async function rejects(fn: Promise<unknown>, re: RegExp): Promise<void> {
   if (!doesThrow) throw new AssertionError(`Expected function to reject${msgToAppendToError}`)
 }
 
-tests({ crypto, describe, it, deepEqual: assertEquals, rejects })
+tests({ describe, it, deepEqual: assertEquals, rejects })
