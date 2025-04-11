@@ -214,6 +214,19 @@ thoroughly review the code.
 Version 2 of this module is now available. However, version 1 will continue to
 receive security updates until at least April 30, 2026.
 
+## Migration from v1 to v2
+
+- The functions no longer require an explicit WebCrypto implementation. This
+  change aligns the API with `@hapi/iron`. Previously, this was necessary to
+  support versions of Node.js prior to v19, which lacked WebCrypto API support
+  via `globalThis.crypto`. With Node.js v18 now reaching its end of life, this
+  workaround is no longer needed.
+
+  ```diff
+  - const sealed = await Iron.seal(_crypto, obj, password, Iron.defaults)
+  + const sealed = await Iron.seal(obj, password, Iron.defaults)
+  ```
+
 ## Credits
 
 ```txt
